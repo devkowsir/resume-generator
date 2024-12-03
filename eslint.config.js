@@ -11,7 +11,16 @@ export default [
   { files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'] },
   { languageOptions: { ecmaVersion: 'latest' } },
   {
-    files: ['apps/client/**/*.{ts,tsx}'],
+    ignores: [
+      '**/dist/',
+      '**/coverage/',
+      '**/public/',
+      'pnpm-lock.yaml',
+      'pnpm-workspace.yaml',
+    ],
+  },
+  {
+    files: ['apps/client/src/*.{ts,tsx}'],
     settings: { react: { version: '18.3' } },
     languageOptions: {
       parserOptions: {
