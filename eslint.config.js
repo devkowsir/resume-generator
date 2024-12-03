@@ -15,6 +15,8 @@ export default [
       '**/dist/',
       '**/coverage/',
       '**/public/',
+      '**/node_modules/',
+      '**/drizzle/',
       'pnpm-lock.yaml',
       'pnpm-workspace.yaml',
     ],
@@ -42,6 +44,16 @@ export default [
         'warn',
         { allowConstantExport: true },
       ],
+    },
+  },
+  {
+    files: ['apps/server/src/*.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.json'],
+        tsconfigRootDir: './apps/server',
+      },
+      globals: { ...globals.node },
     },
   },
   pluginJs.configs.recommended,
