@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-export type Routes = {
+export type TRoute = {
   path?: string;
   router: Router;
 };

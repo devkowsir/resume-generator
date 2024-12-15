@@ -3,14 +3,14 @@ import cors from 'cors';
 import express from 'express';
 import { NODE_ENV, ORIGIN, PORT } from './config';
 import { errorMiddleware } from './middlewares/error';
-import { Routes } from './types';
+import { TRoute } from './types';
 
 class App {
   public app: express.Application;
   public env: string;
   public port: string | number;
 
-  constructor(routes: Routes[]) {
+  constructor(routes: TRoute[]) {
     this.app = express();
     this.env = NODE_ENV || 'development';
     this.port = PORT || 3000;
@@ -37,7 +37,7 @@ class App {
     this.app.use(cookieParser());
   }
 
-  private initializeRoutes(routes: Routes[]) {
+  private initializeRoutes(routes: TRoute[]) {
     routes.forEach((route) => {
       this.app.use('/', route.router);
     });
