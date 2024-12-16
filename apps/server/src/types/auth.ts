@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { signupSchema } from '../schemas/auth';
+import { loginSchema, signupSchema } from '../schemas/auth';
 
 export type TTokenData = {
   id: number;
@@ -9,3 +9,4 @@ export type TTokenData = {
 };
 
 export type TSignupData = z.infer<typeof signupSchema>;
+export type TLoginData = z.infer<typeof loginSchema>;

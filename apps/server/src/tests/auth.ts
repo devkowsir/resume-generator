@@ -55,4 +55,40 @@ describe('Authentication testing.', () => {
       expect(response.status).toBe(409);
     });
   });
+
+  describe('[POST] /login', () => {
+    const signupUrl = `${ServerUrl}/signup`;
+    const loginUrl = `${ServerUrl}/login`;
+    it('Valid Input', async () => {
+      const user = getUser();
+      await fetchHelper.post(signupUrl, user);
+      const { response, data } = await fetchHelper.post(loginUrl, user);
+      expect(response.status).toBe(200);
+      expect(data).toBeDefined();
+      const cookieSetter = response.headers.get('Set-Cookie');
+      expect(cookieSetter).toBeDefined();
+      expect(cookieSetter?.startsWith('Authorization')).toBe(true);
+    });
+    it('Invalid Inputs', async () => {
+      const validUser = getUser();
+      const invalidBodies: Partial<TSignupData>[] = [
+        {},
+        { ...validUser, email: 'not-valid-email' },
+        { ...validUser, password: '' },
+      ];
+      const responses = await Promise.all(
+        invalidBodies.map((body) => fetchHelper.post(loginUrl, body)),
+      );
+      responses.forEach(({ response }) => expect(response.status).toBe(400));
+    });
+    it('Invalid Credentials', async () => {
+      const user = getUser();
+      await fetchHelper.post(signupUrl, user);
+      const { response } = await fetchHelper.post(loginUrl, {
+        ...user,
+        password: 'wrong-password',
+      });
+      expect(response.status).toBe(401);
+    });
+  });
 });

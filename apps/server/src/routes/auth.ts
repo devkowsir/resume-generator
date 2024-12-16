@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth';
 import { validationMiddleware } from '../middlewares/validation';
-import { signupSchema } from '../schemas/auth';
+import { loginSchema, signupSchema } from '../schemas/auth';
 
 export class AuthRoute {
   public path = '/';
@@ -17,6 +17,12 @@ export class AuthRoute {
       `${this.path}signup`,
       validationMiddleware(signupSchema, 'body'),
       this.authController.signup,
+    );
+
+    this.router.post(
+      `${this.path}login`,
+      validationMiddleware(loginSchema, 'body'),
+      this.authController.login,
     );
   }
 }
