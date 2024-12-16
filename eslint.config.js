@@ -8,8 +8,10 @@ import tseslint from 'typescript-eslint';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
-  { files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'] },
-  { languageOptions: { ecmaVersion: 'latest' } },
+  {
+    files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'],
+    languageOptions: { ecmaVersion: 'latest' },
+  },
   {
     ignores: [
       '**/dist/',
@@ -59,4 +61,10 @@ export default [
   pluginJs.configs.recommended,
   eslintPluginPrettierRecommended,
   ...tseslint.configs.recommended,
+  {
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/ban-ts-comment': 'warn',
+    },
+  },
 ];
