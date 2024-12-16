@@ -13,8 +13,7 @@ type JSONCompatible =
 export const fetchHelper = {
   get: async (url: string, init: RequestInit = {}) => {
     const response = await fetch(url, { method: 'GET', ...init });
-    await response.json();
-    return response;
+    return { response, data: await response.json() };
   },
   /**
    * This helper only helps sending JSON data.
@@ -26,8 +25,7 @@ export const fetchHelper = {
       body: JSON.stringify(body),
       ...init,
     });
-    await response.json();
-    return response;
+    return { response, data: await response.json() };
   },
   /**
    * This helper only helps sending JSON data.
@@ -39,8 +37,7 @@ export const fetchHelper = {
       body: JSON.stringify(body),
       ...init,
     });
-    await response.json();
-    return response;
+    return { response, data: await response.json() };
   },
   /**
    * This helper only helps sending JSON data.
@@ -52,12 +49,10 @@ export const fetchHelper = {
       body: JSON.stringify(body),
       ...init,
     });
-    await response.json();
-    return response;
+    return { response, data: await response.json() };
   },
   delete: async (url: string, init: RequestInit = {}) => {
     const response = await fetch(url, { method: 'DELETE', ...init });
-    await response.json();
-    return response;
+    return { response, data: await response.json() };
   },
 };

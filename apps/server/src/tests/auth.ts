@@ -25,11 +25,11 @@ afterAll(async () => {
     );
 });
 
-describe.only('Authentication testing.', () => {
-  describe.only('[POST] /signup', () => {
+describe('Authentication testing.', () => {
+  describe('[POST] /signup', () => {
     const url = `${ServerUrl}/signup`;
     it('Valid Input', async () => {
-      const response = await fetchHelper.post(url, getUser());
+      const { response } = await fetchHelper.post(url, getUser());
       expect(response.status).toBe(201);
       const cookieSetter = response.headers.get('Set-Cookie');
       expect(cookieSetter).toBeDefined();
@@ -46,12 +46,12 @@ describe.only('Authentication testing.', () => {
       const responses = await Promise.all(
         invalidBodies.map((body) => fetchHelper.post(url, body)),
       );
-      responses.forEach((response) => expect(response.status).toBe(400));
+      responses.forEach(({ response }) => expect(response.status).toBe(400));
     });
     it('Duplicate User', async () => {
       const user = getUser();
       await fetchHelper.post(url, user);
-      const response = await fetchHelper.post(url, user);
+      const { response } = await fetchHelper.post(url, user);
       expect(response.status).toBe(409);
     });
   });
