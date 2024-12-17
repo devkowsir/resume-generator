@@ -1,7 +1,7 @@
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
-import { NODE_ENV, ORIGIN, PORT } from './config';
+import { CREDENTIALS, NODE_ENV, ORIGIN, PORT } from './config';
 import { errorMiddleware } from './middlewares/error';
 import { TRoute } from './types';
 
@@ -31,7 +31,12 @@ class App {
   }
 
   private initializeMiddlewares() {
-    this.app.use(cors({ origin: ORIGIN, credentials: false }));
+    this.app.use(
+      cors({
+        origin: [ORIGIN!],
+        credentials: CREDENTIALS == 'true',
+      }),
+    );
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
     this.app.use(cookieParser());

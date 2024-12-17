@@ -1,7 +1,7 @@
 import { compare, hash } from 'bcrypt';
 import { eq } from 'drizzle-orm';
 import { sign } from 'jsonwebtoken';
-import { SECRET_KEY } from '../config';
+import { NODE_ENV, SECRET_KEY } from '../config';
 import { pg } from '../databases';
 import { usersTable } from '../databases/postgres/schema';
 import { HttpException } from '../exceptions/http';
@@ -70,7 +70,7 @@ export class AuthService {
     return { expiresIn, token: sign(userData, secretKey, { expiresIn }) };
   };
 
-  public createCookie = (token: string, expiresIn: number): string => {
-    return `Authorization=${token}; HttpOnly; Max-Age=${expiresIn};`;
+  public static createCookie = (token: string, expiresIn: number): string => {
+    return `Authorization=${token}; HttpOnly; Max-Age=${expiresIn}${NODE_ENV == 'production' ? '; Secure' : ''}`;
   };
 }
