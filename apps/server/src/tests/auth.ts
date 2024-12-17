@@ -14,6 +14,9 @@ const getUser = (): TSignupData => ({
   password: '123456',
 });
 
+const signupUrl = `${ServerUrl}/signup`;
+const loginUrl = `${ServerUrl}/login`;
+
 afterAll(async () => {
   await pg
     .delete(usersTable)
@@ -27,13 +30,9 @@ afterAll(async () => {
 
 describe('Authentication testing.', () => {
   describe('[POST] /signup', () => {
-    const url = `${ServerUrl}/signup`;
     it('Valid Input', async () => {
-      const { response } = await fetchHelper.post(url, getUser());
+      const { response } = await fetchHelper.post(signupUrl, getUser());
       expect(response.status).toBe(201);
-      const cookieSetter = response.headers.get('Set-Cookie');
-      expect(cookieSetter).toBeDefined();
-      expect(cookieSetter?.startsWith('Authorization')).toBe(true);
     });
     it('Invalid Inputs', async () => {
       const validUser = getUser();
@@ -44,21 +43,19 @@ describe('Authentication testing.', () => {
         { ...validUser, password: '' },
       ];
       const responses = await Promise.all(
-        invalidBodies.map((body) => fetchHelper.post(url, body)),
+        invalidBodies.map((body) => fetchHelper.post(signupUrl, body)),
       );
       responses.forEach(({ response }) => expect(response.status).toBe(400));
     });
     it('Duplicate User', async () => {
       const user = getUser();
-      await fetchHelper.post(url, user);
-      const { response } = await fetchHelper.post(url, user);
+      await fetchHelper.post(signupUrl, user);
+      const { response } = await fetchHelper.post(signupUrl, user);
       expect(response.status).toBe(409);
     });
   });
 
   describe('[POST] /login', () => {
-    const signupUrl = `${ServerUrl}/signup`;
-    const loginUrl = `${ServerUrl}/login`;
     it('Valid Input', async () => {
       const user = getUser();
       await fetchHelper.post(signupUrl, user);

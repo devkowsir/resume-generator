@@ -8,8 +8,7 @@ export class AuthController {
   public signup: RequestHandler = async (req, res, next) => {
     try {
       const newUser: TSignupData = req.body;
-      const { user, cookie } = await this.authService.signup(newUser);
-      res.setHeader('Set-Cookie', [cookie]);
+      const { user } = await this.authService.signup(newUser);
       res.status(201).json({ message: 'Signup successful.', user });
     } catch (error) {
       next(error);
@@ -19,8 +18,8 @@ export class AuthController {
   public login: RequestHandler = async (req, res, next) => {
     try {
       const credentials: TLoginData = req.body;
-      const { user, cookie } = await this.authService.login(credentials);
-      res.setHeader('Set-Cookie', [cookie]);
+      const { user, authCookie } = await this.authService.login(credentials);
+      res.setHeader('Set-Cookie', [authCookie]);
       res.status(200).json({ message: 'Login successful.', user });
     } catch (error) {
       next(error);

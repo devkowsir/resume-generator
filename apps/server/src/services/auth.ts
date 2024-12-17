@@ -35,11 +35,9 @@ export class AuthService {
         email: usersTable.email,
         photo: usersTable.photo,
       });
+    const user = createdUser[0];
 
-    const { expiresIn, token } = this.createToken(createdUser[0]);
-    const cookie = this.createCookie(token, expiresIn);
-
-    return { cookie, user: createdUser[0] };
+    return { user };
   };
 
   public login = async (credentials: TLoginData) => {
@@ -57,17 +55,22 @@ export class AuthService {
     );
     if (!isValidPassword) throw new HttpException(401, `Invalid credentials.`);
 
-    const { expiresIn, token } = this.createToken(user);
-    const cookie = this.createCookie(token, expiresIn);
+    const maxAge = 60 * 60;
+    const authToken = AuthService.createToken(user, maxAge);
+    const authCookie = AuthService.createCookie(authToken, maxAge);
 
-    return { cookie, user };
+    return { authCookie, user };
   };
 
-  public createToken = (userData: TTokenData) => {
-    const secretKey: string = SECRET_KEY!;
-    const expiresIn: number = 60 * 60;
-
-    return { expiresIn, token: sign(userData, secretKey, { expiresIn }) };
+  public static createToken = (userData: TTokenData, maxAge: number) => {
+    // sanitize unnecessary data.
+    const tokenData: TTokenData = {
+      id: userData.id,
+      email: userData.email,
+      name: userData.name,
+      photo: userData.photo,
+    };
+    return sign(tokenData, SECRET_KEY!, { expiresIn: maxAge });
   };
 
   public static createCookie = (token: string, expiresIn: number): string => {
