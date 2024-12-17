@@ -62,6 +62,10 @@ export class AuthService {
     return { authCookie, user };
   };
 
+  public logout = () => {
+    return { authCookie: `Authorization=; Max-Age=0` };
+  };
+
   public static createToken = (userData: TTokenData, maxAge: number) => {
     // sanitize unnecessary data.
     const tokenData: TTokenData = {

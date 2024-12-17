@@ -25,4 +25,14 @@ export class AuthController {
       next(error);
     }
   };
+
+  public logout: RequestHandler = (req, res, next) => {
+    try {
+      const { authCookie } = this.authService.logout();
+      res.setHeader('Set-Cookie', [authCookie]);
+      res.status(200).json({ message: 'Logout successful.' });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
