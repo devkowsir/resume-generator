@@ -1,8 +1,11 @@
 import { z } from 'zod';
 import { loginSchema, signupSchema } from '../schemas/auth';
 
-export type TTokenData = {
-  id: number;
+export type TRefreshTokenData = {
+  email: string;
+};
+
+export type TAccessTokenData = {
   name: string;
   email: string;
   photo: string | null;

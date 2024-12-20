@@ -18,11 +18,7 @@ export class AuthService {
       await tx.insert(authentications).values({ provider: 'email', userId: createdUser.id, passwordHash });
     });
     if (!createdUser) throw new HttpException(500, 'Something went wrong!');
-    const refreshTokenAge = 60 * 60 * 24 * 30;
-    const refreshToken = AuthService.createRefreshToken(createdUser, refreshTokenAge);
-    const cookie = AuthService.createCookie(refreshToken, refreshTokenAge);
-    const accessToken = AuthService.createAccessToken(createdUser);
-    return { cookie, accessToken };
+    return AuthService.getTokenAndCookie(createdUser);
   };
 
   public login = async (credentials: TLoginData) => {
@@ -35,11 +31,7 @@ export class AuthService {
     if (!authentication.passwordHash) throw new HttpException(401, `This account cannot be accesed using password.`);
     const isValidPassword = await compare(credentials.password, authentication.passwordHash);
     if (!isValidPassword) throw new HttpException(401, `Invalid credentials.`);
-    const refreshTokenAge = 60 * 60 * 24 * 30;
-    const refreshToken = AuthService.createRefreshToken(user, refreshTokenAge);
-    const cookie = AuthService.createCookie(refreshToken, refreshTokenAge);
-    const accessToken = AuthService.createAccessToken(user);
-    return { cookie, accessToken };
+    return AuthService.getTokenAndCookie(user);
   };
 
   public logout = () => {
@@ -72,5 +64,13 @@ export class AuthService {
 
   public static createCookie = (token: string, expiresIn: number): string => {
     return `Authorization=${token}; HttpOnly; Max-Age=${expiresIn}${NODE_ENV == 'production' ? '; Secure' : ''}`;
+  };
+
+  public static getTokenAndCookie = (user: TUserData) => {
+    const refreshTokenAge = 60 * 60 * 24 * 30;
+    const refreshToken = AuthService.createRefreshToken(user, refreshTokenAge);
+    const cookie = AuthService.createCookie(refreshToken, refreshTokenAge);
+    const accessToken = AuthService.createAccessToken(user);
+    return { cookie, accessToken };
   };
 }
