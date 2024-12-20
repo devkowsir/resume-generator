@@ -2,6 +2,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
 import { CREDENTIALS, NODE_ENV, ORIGIN, PORT } from './config';
+import { passport } from './lib/passport';
 import { errorMiddleware } from './middlewares/error';
 import { TRoute } from './types';
 
@@ -40,6 +41,7 @@ class App {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
     this.app.use(cookieParser());
+    this.app.use(passport.initialize());
   }
 
   private initializeRoutes(routes: TRoute[]) {
