@@ -3,9 +3,8 @@ import { decode, sign } from 'jsonwebtoken';
 import { afterAll, describe, expect, it } from 'vitest';
 import { PORT, SECRET_KEY } from '../config';
 import { pg } from '../databases';
-import { usersTable } from '../databases/postgres/schema';
-import { AuthService } from '../services/auth';
-import { TSignupData, TTokenData } from '../types';
+import { users } from '../databases/postgres/schema';
+import { TAccessTokenData, TSignupData } from '../types';
 import { fetchHelper } from '../utils/helpers';
 
 const ServerUrl = `http://localhost:${PORT}`;
@@ -16,26 +15,23 @@ const getUser = (): TSignupData => ({
   password: '123456',
 });
 
-const signupUrl = `${ServerUrl}/signup`;
-const loginUrl = `${ServerUrl}/login`;
-const logoutUrl = `${ServerUrl}/logout`;
+const signupUrl = `${ServerUrl}/auth/signup`;
+const loginUrl = `${ServerUrl}/auth/login`;
+const logoutUrl = `${ServerUrl}/auth/logout`;
+
+const getAuthToken = (cookie: string) => cookie.replace(/.*Authorization=([^;]*);.*/, '$1');
 
 afterAll(async () => {
-  await pg
-    .delete(usersTable)
-    .where(
-      and(
-        like(usersTable.email, 'test-%@test.com'),
-        eq(usersTable.name, 'test-user'),
-      ),
-    );
+  await pg.delete(users).where(and(like(users.email, 'test-%@test.com'), eq(users.name, 'test-user')));
 });
 
 describe('Authentication testing.', () => {
   describe('[POST] /signup', () => {
     it('Valid Input', async () => {
-      const { response } = await fetchHelper.post(signupUrl, getUser());
+      const { response, data } = await fetchHelper.post(signupUrl, getUser());
       expect(response.status).toBe(201);
+      expect(data.accessToken).toBeTypeOf('string');
+      expect(getAuthToken(response.headers.get('Set-Cookie') ?? '').length).toBeGreaterThan(0);
     });
     it('Invalid Inputs', async () => {
       const validUser = getUser();
@@ -45,9 +41,7 @@ describe('Authentication testing.', () => {
         { ...validUser, email: 'not-valid-email' },
         { ...validUser, password: '' },
       ];
-      const responses = await Promise.all(
-        invalidBodies.map((body) => fetchHelper.post(signupUrl, body)),
-      );
+      const responses = await Promise.all(invalidBodies.map((body) => fetchHelper.post(signupUrl, body)));
       responses.forEach(({ response }) => expect(response.status).toBe(400));
     });
     it('Duplicate User', async () => {
@@ -64,21 +58,17 @@ describe('Authentication testing.', () => {
       await fetchHelper.post(signupUrl, user);
       const { response, data } = await fetchHelper.post(loginUrl, user);
       expect(response.status).toBe(200);
-      expect(data).toBeDefined();
-      const cookieSetter = response.headers.get('Set-Cookie');
-      expect(cookieSetter).toBeDefined();
-      expect(cookieSetter?.startsWith('Authorization')).toBe(true);
+      expect(data.accessToken).toBeTypeOf('string');
+      expect(getAuthToken(response.headers.get('Set-Cookie') ?? '').length).toBeGreaterThan(0);
     });
     it('Invalid Inputs', async () => {
       const validUser = getUser();
-      const invalidBodies: Partial<TSignupData>[] = [
+      const invalidUsers: Partial<TSignupData>[] = [
         {},
         { ...validUser, email: 'not-valid-email' },
         { ...validUser, password: '' },
       ];
-      const responses = await Promise.all(
-        invalidBodies.map((body) => fetchHelper.post(loginUrl, body)),
-      );
+      const responses = await Promise.all(invalidUsers.map((body) => fetchHelper.post(loginUrl, body)));
       responses.forEach(({ response }) => expect(response.status).toBe(400));
     });
     it('Invalid Credentials', async () => {
@@ -92,39 +82,22 @@ describe('Authentication testing.', () => {
     });
   });
 
-  describe('[POST] /logout', () => {
+  describe('[GET] /logout', () => {
     it('Valid Input', async () => {
-      const user = getUser();
-      await fetchHelper.post(signupUrl, user);
-      const { response: loginResponse } = await fetchHelper.post(
-        loginUrl,
-        user,
-      );
-      const token = loginResponse.headers
-        .get('Set-Cookie')
-        ?.split(';')
-        .filter((cookie) => cookie.startsWith('Authorization'))[0]
-        ?.split('=')[1];
-      expect(token).toBeTypeOf('string');
-      const { response: logoutResponse } = await fetchHelper.get(logoutUrl, {
-        headers: { Authorization: `Bearer ${token}` },
+      const { data } = await fetchHelper.post(signupUrl, getUser());
+      const { response, data: logoutData } = await fetchHelper.get(logoutUrl, {
+        headers: { Authorization: `Bearer ${data.accessToken}` },
       });
-      expect(logoutResponse.status).toBe(200);
+      expect(response.status).toBe(200);
+      expect(getAuthToken(response.headers.get('Set-Cookie') ?? '').length).toBe(0);
+      expect(logoutData.accessToken).toBe(null);
     });
     it('Invalid token', async () => {
       const user = getUser();
       await fetchHelper.post(signupUrl, user);
-      const { response: loginResponse } = await fetchHelper.post(
-        loginUrl,
-        user,
-      );
-      const token = loginResponse.headers
-        .get('Set-Cookie')
-        ?.split(';')
-        .filter((cookie) => cookie.startsWith('Authorization'))[0]
-        ?.split('=')[1];
-      expect(token).toBeTypeOf('string');
-      const tokenData = decode(token!) as TTokenData;
+      const { response: loginResponse } = await fetchHelper.post(loginUrl, user);
+      const token = getAuthToken(loginResponse.headers.get('Set-Cookie') ?? '');
+      const tokenData = decode(token!) as TAccessTokenData;
       const invalidToken = sign(tokenData, 'wrong-secret');
       const { response: logoutResponse } = await fetchHelper.get(logoutUrl, {
         headers: { Authorization: `Bearer ${invalidToken}` },
@@ -134,19 +107,11 @@ describe('Authentication testing.', () => {
     it('Expired token', async () => {
       const user = getUser();
       await fetchHelper.post(signupUrl, user);
-      const { response: loginResponse } = await fetchHelper.post(
-        loginUrl,
-        user,
-      );
-      const token = loginResponse.headers
-        .get('Set-Cookie')
-        ?.split(';')
-        .filter((cookie) => cookie.startsWith('Authorization'))[0]
-        ?.split('=')[1];
+      const { response: loginResponse } = await fetchHelper.post(loginUrl, user);
+      const token = getAuthToken(loginResponse.headers.get('Set-Cookie') ?? '');
       expect(token).toBeTypeOf('string');
-      const tokenData = decode(token!) as TTokenData;
       const expiresIn = 1;
-      const expiredToken = AuthService.createToken(tokenData, expiresIn);
+      const expiredToken = sign(user, SECRET_KEY!, { expiresIn });
       await new Promise((res) => setTimeout(res, expiresIn * 1000));
       const { response: logoutResponse } = await fetchHelper.get(logoutUrl, {
         headers: { Authorization: `Bearer ${expiredToken}` },
