@@ -3,78 +3,71 @@ import { eq } from 'drizzle-orm';
 import { sign } from 'jsonwebtoken';
 import { NODE_ENV, SECRET_KEY } from '../config';
 import { pg } from '../databases';
-import { usersTable } from '../databases/postgres/schema';
+import { authentications, TUserData, users } from '../databases/postgres/schema';
 import { HttpException } from '../exceptions/http';
-import { TLoginData, TSignupData, TTokenData } from '../types';
+import { TAccessTokenData, TLoginData, TRefreshTokenData, TSignupData } from '../types';
 
 export class AuthService {
   public signup = async (newUser: TSignupData) => {
-    const findUser = await pg
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.email, newUser.email));
-
-    if (findUser.length) {
-      throw new HttpException(
-        409,
-        `This email ${newUser.email} alredy has associated user.`,
-      );
-    }
-
-    const hashedPassword = await hash(newUser.password, 10);
-    const createdUser = await pg
-      .insert(usersTable)
-      .values({
-        name: newUser.name,
-        email: newUser.email,
-        password: hashedPassword,
-      })
-      .returning({
-        id: usersTable.id,
-        name: usersTable.name,
-        email: usersTable.email,
-        photo: usersTable.photo,
-      });
-    const user = createdUser[0];
-
-    return { user };
+    const [existingUser] = await pg.select().from(users).where(eq(users.email, newUser.email));
+    if (existingUser) throw new HttpException(409, `This email ${newUser.email} already has associated user.`);
+    const passwordHash = await hash(newUser.password, 10);
+    let createdUser: TUserData | null = null;
+    await pg.transaction(async (tx) => {
+      [createdUser] = await tx.insert(users).values({ name: newUser.name, email: newUser.email }).returning();
+      await tx.insert(authentications).values({ provider: 'email', userId: createdUser.id, passwordHash });
+    });
+    if (!createdUser) throw new HttpException(500, 'Something went wrong!');
+    const refreshTokenAge = 60 * 60 * 24 * 30;
+    const refreshToken = AuthService.createRefreshToken(createdUser, refreshTokenAge);
+    const cookie = AuthService.createCookie(refreshToken, refreshTokenAge);
+    const accessToken = AuthService.createAccessToken(createdUser);
+    return { cookie, accessToken };
   };
 
   public login = async (credentials: TLoginData) => {
-    const findUser = await pg
+    const [{ users: user, authentications: authentication }] = await pg
       .select()
-      .from(usersTable)
-      .where(eq(usersTable.email, credentials.email));
-    const user = findUser[0];
-
-    if (!user) throw new HttpException(401, `Invalid credentials.`);
-
-    const isValidPassword = await compare(
-      credentials.password,
-      user.password ?? '',
-    );
+      .from(users)
+      .where(eq(users.email, credentials.email))
+      .innerJoin(authentications, eq(users.id, authentications.userId));
+    if (!user || !authentication) throw new HttpException(401, `User not found with email ${credentials.email}`);
+    if (!authentication.passwordHash) throw new HttpException(401, `This account cannot be accesed using password.`);
+    const isValidPassword = await compare(credentials.password, authentication.passwordHash);
     if (!isValidPassword) throw new HttpException(401, `Invalid credentials.`);
-
-    const maxAge = 60 * 60;
-    const authToken = AuthService.createToken(user, maxAge);
-    const authCookie = AuthService.createCookie(authToken, maxAge);
-
-    return { authCookie, user };
+    const refreshTokenAge = 60 * 60 * 24 * 30;
+    const refreshToken = AuthService.createRefreshToken(user, refreshTokenAge);
+    const cookie = AuthService.createCookie(refreshToken, refreshTokenAge);
+    const accessToken = AuthService.createAccessToken(user);
+    return { cookie, accessToken };
   };
 
   public logout = () => {
-    return { authCookie: `Authorization=; Max-Age=0` };
+    return { cookie: `Authorization=; Max-Age=0`, accessToken: null };
   };
 
-  public static createToken = (userData: TTokenData, maxAge: number) => {
+  public static createRefreshToken = (userData: TRefreshTokenData & { id: number | string }, maxAge: number) => {
     // sanitize unnecessary data.
-    const tokenData: TTokenData = {
-      id: userData.id,
+    const tokenData: TRefreshTokenData = {
+      email: userData.email,
+    };
+    return sign(tokenData, SECRET_KEY!, {
+      expiresIn: maxAge,
+      subject: `${userData.id}`,
+    });
+  };
+
+  public static createAccessToken = (userData: TAccessTokenData & { id: number | string }) => {
+    // sanitize unnecessary data.
+    const tokenData: TAccessTokenData = {
       email: userData.email,
       name: userData.name,
       photo: userData.photo,
     };
-    return sign(tokenData, SECRET_KEY!, { expiresIn: maxAge });
+    return sign(tokenData, SECRET_KEY!, {
+      expiresIn: 60 * 60,
+      subject: `${userData.id}`,
+    });
   };
 
   public static createCookie = (token: string, expiresIn: number): string => {
