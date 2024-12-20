@@ -14,22 +14,10 @@ export class AuthRoute {
   }
 
   private initializeRoutes() {
-    this.router.post(
-      `${this.path}signup`,
-      validationMiddleware(signupSchema, 'body'),
-      this.authController.signup,
-    );
+    this.router.post(`/signup`, validationMiddleware(signupSchema, 'body'), this.authController.signup);
 
-    this.router.post(
-      `${this.path}login`,
-      validationMiddleware(loginSchema, 'body'),
-      this.authController.login,
-    );
+    this.router.post(`/login`, validationMiddleware(loginSchema, 'body'), this.authController.login);
 
-    this.router.get(
-      `${this.path}logout`,
-      authMiddleware,
-      this.authController.logout,
-    );
+    this.router.get(`/logout`, authMiddleware, this.authController.logout);
   }
 }
