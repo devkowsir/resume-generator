@@ -1,11 +1,11 @@
 import { compare, hash } from 'bcrypt';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { sign } from 'jsonwebtoken';
 import { NODE_ENV, SECRET_KEY } from '../config';
 import { pg } from '../databases';
 import { authentications, TUserData, users } from '../databases/postgres/schema';
 import { HttpException } from '../exceptions/http';
-import { TAccessTokenData, TLoginData, TRefreshTokenData, TSignupData } from '../types';
+import { TAccessTokenData, TGoogleUserData, TLoginData, TRefreshTokenData, TSignupData } from '../types';
 
 export class AuthService {
   public signup = async (newUser: TSignupData) => {
@@ -31,6 +31,27 @@ export class AuthService {
     if (!authentication.passwordHash) throw new HttpException(401, `This account cannot be accesed using password.`);
     const isValidPassword = await compare(credentials.password, authentication.passwordHash);
     if (!isValidPassword) throw new HttpException(401, `Invalid credentials.`);
+    return AuthService.getTokenAndCookie(user);
+  };
+
+  public googleCallback = async (googleUserData: TGoogleUserData) => {
+    let [{ users: user }] = await pg
+      .select()
+      .from(authentications)
+      .where(and(eq(authentications.provider, 'google'), eq(authentications.providerId, googleUserData.id)))
+      .innerJoin(users, eq(authentications.userId, users.id));
+    if (!user) {
+      await pg.transaction(async (tx) => {
+        [user] = await tx.insert(users).values({ name: googleUserData.name, email: googleUserData.email }).returning();
+        await tx.insert(authentications).values({ provider: 'google', userId: user.id, providerId: googleUserData.id });
+      });
+    } else if (user.name !== googleUserData.name || user.photo !== googleUserData.photo) {
+      [user] = await pg
+        .update(users)
+        .set({ name: googleUserData.name, photo: googleUserData.photo })
+        .where(eq(users.email, googleUserData.email))
+        .returning();
+    }
     return AuthService.getTokenAndCookie(user);
   };
 

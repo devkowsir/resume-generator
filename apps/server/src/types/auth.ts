@@ -11,5 +11,12 @@ export type TAccessTokenData = {
   photo: string | null;
 };
 
+export type TGoogleUserData = {
+  id: string;
+  email: string;
+  name: string;
+  photo: string;
+};
+
 export type TSignupData = z.infer<typeof signupSchema>;
 export type TLoginData = z.infer<typeof loginSchema>;

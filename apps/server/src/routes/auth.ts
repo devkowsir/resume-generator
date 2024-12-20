@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth';
+import { passport } from '../lib/passport';
 import { authMiddleware } from '../middlewares/auth';
 import { validationMiddleware } from '../middlewares/validation';
 import { loginSchema, signupSchema } from '../schemas/auth';
@@ -17,6 +18,12 @@ export class AuthRoute {
     this.router.post(`/signup`, validationMiddleware(signupSchema, 'body'), this.authController.signup);
 
     this.router.post(`/login`, validationMiddleware(loginSchema, 'body'), this.authController.login);
+
+    this.router.get(
+      `/callback/google`,
+      passport.authenticate('google', { session: false }),
+      this.authController.googleCallback,
+    );
 
     this.router.get(`/logout`, authMiddleware, this.authController.logout);
   }
