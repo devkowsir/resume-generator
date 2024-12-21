@@ -35,11 +35,12 @@ export class AuthService {
   };
 
   public googleCallback = async (googleUserData: TGoogleUserData) => {
-    let [{ users: user }] = await pg
+    const [data] = await pg
       .select()
       .from(authentications)
       .where(and(eq(authentications.provider, 'google'), eq(authentications.providerId, googleUserData.id)))
       .innerJoin(users, eq(authentications.userId, users.id));
+    let user = data?.users;
     if (!user) {
       await pg.transaction(async (tx) => {
         [user] = await tx.insert(users).values({ name: googleUserData.name, email: googleUserData.email }).returning();

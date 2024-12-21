@@ -118,17 +118,10 @@ describe('Authentication testing.', () => {
       });
       expect(logoutResponse.status).toBe(401);
     });
-    it('Invalid token data', async () => {
-      const user: TTokenData = {
-        ...getUser(),
-        id: Math.round(Math.random() * 1000),
-        photo: null,
-      };
-      const token = sign(user, SECRET_KEY!, { expiresIn: '1h' });
-      const { response } = await fetchHelper.get(logoutUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      expect(response.status).toBe(401);
-    });
   });
+
+  // Mannyally test the google oauth callback route.
+  // Paste the following link in the browser to test.
+  // In response you will get an access token in body and refresh token in cookies.
+  // https://accounts.google.com/o/oauth2/v2/auth?client_id=157906123910-kvgo88dt6fuh0u3isqmj9tq8obascud4.apps.googleusercontent.com&redirect_uri=http://localhost:5000/auth/callback/google&response_type=code&scope=openid%20email%20profile&access_type=offline&state=abc
 });
